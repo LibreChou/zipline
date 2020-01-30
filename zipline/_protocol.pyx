@@ -218,7 +218,6 @@ cdef class BarData:
                 # assume fetcher
                 pass
             view = self._views[asset] = self._create_sid_view(asset)
-
         return view
 
     cdef _create_sid_view(self, asset):

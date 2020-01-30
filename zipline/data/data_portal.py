@@ -332,7 +332,9 @@ class DataPortal(object):
             return
 
         # Normalize all the dates in the df
-        source_df.index = source_df.index.normalize()
+
+        # remove to keep minute data
+        # source_df.index = source_df.index.normalize()
 
         # source_df's sid column can either consist of assets we know about
         # (such as sid(24)) or of assets we don't know about (such as
@@ -365,7 +367,6 @@ class DataPortal(object):
         group_dict = {}
         for group_name in group_names:
             group_dict[group_name] = grouped_by_sid.get_group(group_name)
-
         # This will be the dataframe which we query to get fetcher assets at
         # any given time. Get's overwritten every time there's a new fetcher
         # call
@@ -379,7 +380,7 @@ class DataPortal(object):
 
             # Reindex the dataframe based on the backtest start/end date.
             # This makes reads easier during the backtest.
-            df = self._reindex_extra_source(df, source_date_index)
+            # df = self._reindex_extra_source(df, source_date_index)
 
             for col_name in df.columns.difference(['sid']):
                 if col_name not in self._augmented_sources_map:
@@ -420,11 +421,11 @@ class DataPortal(object):
                     (isinstance(asset, (Asset, ContinuousFuture))))
 
     def _get_fetcher_value(self, asset, field, dt):
-        day = normalize_date(dt)
+        # day = normalize_date(dt)
 
         try:
             return \
-                self._augmented_sources_map[field][asset].loc[day, field]
+                self._augmented_sources_map[field][asset].loc[dt, field]
         except KeyError:
             return np.NaN
 

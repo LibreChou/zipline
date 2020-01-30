@@ -14,6 +14,9 @@
 # limitations under the License.
 import pandas as pd
 import requests
+import os
+import pandas_datareader.data as web
+from datetime import datetime
 
 
 def get_benchmark_returns(symbol):
@@ -29,14 +32,14 @@ def get_benchmark_returns(symbol):
     The data is provided by IEX (https://iextrading.com/), and we can
     get up to 5 years worth of data.
     """
-    r = requests.get(
-        'https://api.iextrading.com/1.0/stock/{}/chart/5y'.format(symbol)
-    )
-    data = r.json()
 
-    df = pd.DataFrame(data)
+    # token = os.environ[IEX_KEY]
+    # r = requests.get(
+    #         'https://cloud.iexapis.com/stable/stock/{}/chart/5y?token={}'.format(symbol, token)
+    # )
 
-    df.index = pd.DatetimeIndex(df['date'])
-    df = df['close']
-
-    return df.sort_index().tz_localize('UTC').pct_change(1).iloc[1:]
+    # data = r.json()
+    # df.index = pd.DatetimeIndex(df['date'])
+    # df = df['close']
+    df = web.DataReader('SP500', 'fred')['SP500'].fillna(method='ffill')
+    return df.sort_index().tz_localize('UTC').pct_change(1).dropna()

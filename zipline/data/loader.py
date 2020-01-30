@@ -26,17 +26,16 @@ from ..utils.paths import (
     data_root,
 )
 
-
 logger = logbook.Logger('Loader')
 
 # Mapping from index symbol to appropriate bond data
 INDEX_MAPPING = {
-    'SPY':
-    (treasuries, 'treasury_curves.csv', 'www.federalreserve.gov'),
+    'SPY'    :
+        (treasuries, 'treasury_curves.csv', 'www.federalreserve.gov'),
     '^GSPTSE':
-    (treasuries_can, 'treasury_curves_can.csv', 'bankofcanada.ca'),
-    '^FTSE':  # use US treasuries until UK bonds implemented
-    (treasuries, 'treasury_curves.csv', 'www.federalreserve.gov'),
+        (treasuries_can, 'treasury_curves_can.csv', 'bankofcanada.ca'),
+    '^FTSE'  :  # use US treasuries until UK bonds implemented
+        (treasuries, 'treasury_curves.csv', 'www.federalreserve.gov'),
 }
 
 ONE_HOUR = pd.Timedelta(hours=1)
@@ -139,21 +138,21 @@ def load_market_data(trading_day=None, trading_days=None, bm_symbol='SPY',
     last_date = trading_days[trading_days.get_loc(now, method='ffill')]
 
     br = ensure_benchmark_data(
-        bm_symbol,
-        first_date,
-        last_date,
-        now,
-        # We need the trading_day to figure out the close prior to the first
-        # date so that we can compute returns for the first date.
-        trading_day,
-        environ,
+            bm_symbol,
+            first_date,
+            last_date,
+            now,
+            # We need the trading_day to figure out the close prior to the first
+            # date so that we can compute returns for the first date.
+            trading_day,
+            environ,
     )
     tc = ensure_treasury_data(
-        bm_symbol,
-        first_date,
-        last_date,
-        now,
-        environ,
+            bm_symbol,
+            first_date,
+            last_date,
+            now,
+            environ,
     )
 
     # combine dt indices and reindex using ffill then bfill
@@ -205,11 +204,11 @@ def ensure_benchmark_data(symbol, first_date, last_date, now, trading_day,
     # If no cached data was found or it was missing any dates then download the
     # necessary data.
     logger.info(
-        ('Downloading benchmark data for {symbol!r} '
-            'from {first_date} to {last_date}'),
-        symbol=symbol,
-        first_date=first_date - trading_day,
-        last_date=last_date
+            ('Downloading benchmark data for {symbol!r} '
+             'from {first_date} to {last_date}'),
+            symbol=symbol,
+            first_date=first_date - trading_day,
+            last_date=last_date
     )
 
     try:
@@ -220,11 +219,11 @@ def ensure_benchmark_data(symbol, first_date, last_date, now, trading_day,
         raise
     if not has_data_for_dates(data, first_date, last_date):
         logger.warn(
-            ("Still don't have expected benchmark data for {symbol!r} "
-                "from {first_date} to {last_date} after redownload!"),
-            symbol=symbol,
-            first_date=first_date - trading_day,
-            last_date=last_date
+                ("Still don't have expected benchmark data for {symbol!r} "
+                 "from {first_date} to {last_date} after redownload!"),
+                symbol=symbol,
+                first_date=first_date - trading_day,
+                last_date=last_date
         )
     return data
 
@@ -257,7 +256,7 @@ def ensure_treasury_data(symbol, first_date, last_date, now, environ=None):
     path.
     """
     loader_module, filename, source = INDEX_MAPPING.get(
-        symbol, INDEX_MAPPING['SPY'],
+            symbol, INDEX_MAPPING['SPY'],
     )
     first_date = max(first_date, loader_module.earliest_possible_date())
 
@@ -269,11 +268,11 @@ def ensure_treasury_data(symbol, first_date, last_date, now, environ=None):
     # If no cached data was found or it was missing any dates then download the
     # necessary data.
     logger.info(
-        ('Downloading treasury data for {symbol!r} '
-            'from {first_date} to {last_date}'),
-        symbol=symbol,
-        first_date=first_date,
-        last_date=last_date
+            ('Downloading treasury data for {symbol!r} '
+             'from {first_date} to {last_date}'),
+            symbol=symbol,
+            first_date=first_date,
+            last_date=last_date
     )
 
     try:
@@ -283,11 +282,11 @@ def ensure_treasury_data(symbol, first_date, last_date, now, environ=None):
         logger.exception('failed to cache treasury data')
     if not has_data_for_dates(data, first_date, last_date):
         logger.warn(
-            ("Still don't have expected treasury data for {symbol!r} "
-                "from {first_date} to {last_date} after redownload!"),
-            symbol=symbol,
-            first_date=first_date,
-            last_date=last_date
+                ("Still don't have expected treasury data for {symbol!r} "
+                 "from {first_date} to {last_date} after redownload!"),
+                symbol=symbol,
+                first_date=first_date,
+                last_date=last_date
         )
     return data
 
@@ -297,19 +296,20 @@ def _load_cached_data(filename, first_date, last_date, now, resource_name,
     if resource_name == 'benchmark':
         def from_csv(path):
             return pd.read_csv(
-                path,
-                parse_dates=[0],
-                index_col=0,
-                header=None,
-                # Pass squeeze=True so that we get a series instead of a frame.
-                squeeze=True,
+                    path,
+                    parse_dates=[0],
+                    index_col=0,
+                    header=None,
+                    # Pass squeeze=True so that we get a series instead of a frame.
+                    squeeze=True,
             ).tz_localize('UTC')
     else:
+
         def from_csv(path):
             return pd.read_csv(
-                path,
-                parse_dates=[0],
-                index_col=0,
+                    path,
+                    parse_dates=[0],
+                    index_col=0,
             ).tz_localize('UTC')
 
     # Path for the cache.
@@ -328,10 +328,10 @@ def _load_cached_data(filename, first_date, last_date, now, resource_name,
             last_download_time = last_modified_time(path)
             if (now - last_download_time) <= ONE_HOUR:
                 logger.warn(
-                    "Refusing to download new {resource} data because a "
-                    "download succeeded at {time}.",
-                    resource=resource_name,
-                    time=last_download_time,
+                        "Refusing to download new {resource} data because a "
+                        "download succeeded at {time}.",
+                        resource=resource_name,
+                        time=last_download_time,
                 )
                 return data
 
@@ -339,16 +339,16 @@ def _load_cached_data(filename, first_date, last_date, now, resource_name,
             # These can all be raised by various versions of pandas on various
             # classes of malformed input.  Treat them all as cache misses.
             logger.info(
-                "Loading data for {path} failed with error [{error}].",
-                path=path,
-                error=e,
+                    "Loading data for {path} failed with error [{error}].",
+                    path=path,
+                    error=e,
             )
 
     logger.info(
-        "Cache at {path} does not have data from {start} to {end}.\n",
-        start=first_date,
-        end=last_date,
-        path=path,
+            "Cache at {path} does not have data from {start} to {end}.\n",
+            start=first_date,
+            end=last_date,
+            path=path,
     )
     return None
 

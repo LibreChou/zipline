@@ -1,12 +1,14 @@
-import click
 import os
 import sys
 import warnings
+
+import click
 
 try:
     from pygments import highlight
     from pygments.lexers import PythonLexer
     from pygments.formatters import TerminalFormatter
+
     PYGMENTS = True
 except ImportError:
     PYGMENTS = False
@@ -73,7 +75,8 @@ def _run(handle_data,
          local_namespace,
          environ,
          blotter,
-         benchmark_returns):
+         benchmark_returns,
+         custom_loader=None):
     """Run a backtest for the given algorithm.
 
     This is shared between the cli and :func:`zipline.run_algo`.
@@ -93,8 +96,8 @@ def _run(handle_data,
                 name, value = assign.split('=', 2)
             except ValueError:
                 raise ValueError(
-                    'invalid define %r, should be of the form name=value' %
-                    assign,
+                        'invalid define %r, should be of the form name=value' %
+                        assign,
                 )
             try:
                 # evaluate in the same namespace so names may refer to
@@ -102,12 +105,12 @@ def _run(handle_data,
                 namespace[name] = eval(value, namespace)
             except Exception as e:
                 raise ValueError(
-                    'failed to execute definition for name %r: %s' % (name, e),
+                        'failed to execute definition for name %r: %s' % (name, e),
                 )
     elif defines:
         raise _RunAlgoError(
-            'cannot pass define without `algotext`',
-            "cannot pass '-D' / '--define' without '-t' / '--algotext'",
+                'cannot pass define without `algotext`',
+                "cannot pass '-D' / '--define' without '-t' / '--algotext'",
         )
     else:
         namespace = {}
@@ -117,10 +120,10 @@ def _run(handle_data,
     if print_algo:
         if PYGMENTS:
             highlight(
-                algotext,
-                PythonLexer(),
-                TerminalFormatter(),
-                outfile=sys.stdout,
+                    algotext,
+                    PythonLexer(),
+                    TerminalFormatter(),
+                    outfile=sys.stdout,
             )
         else:
             click.echo(algotext)
@@ -131,41 +134,45 @@ def _run(handle_data,
     # date parameter validation
     if trading_calendar.session_distance(start, end) < 1:
         raise _RunAlgoError(
-            'There are no trading days between %s and %s' % (
-                start.date(),
-                end.date(),
-            ),
+                'There are no trading days between %s and %s' % (
+                    start.date(),
+                    end.date(),
+                ),
         )
 
     bundle_data = bundles.load(
-        bundle,
-        environ,
-        bundle_timestamp,
+            bundle,
+            environ,
+            bundle_timestamp,
     )
 
     first_trading_day = \
         bundle_data.equity_minute_bar_reader.first_trading_day
 
     data = DataPortal(
-        bundle_data.asset_finder,
-        trading_calendar=trading_calendar,
-        first_trading_day=first_trading_day,
-        equity_minute_reader=bundle_data.equity_minute_bar_reader,
-        equity_daily_reader=bundle_data.equity_daily_bar_reader,
-        adjustment_reader=bundle_data.adjustment_reader,
+            bundle_data.asset_finder,
+            trading_calendar=trading_calendar,
+            first_trading_day=first_trading_day,
+            equity_minute_reader=bundle_data.equity_minute_bar_reader,
+            equity_daily_reader=bundle_data.equity_daily_bar_reader,
+            adjustment_reader=bundle_data.adjustment_reader,
     )
 
     pipeline_loader = USEquityPricingLoader(
-        bundle_data.equity_daily_bar_reader,
-        bundle_data.adjustment_reader,
+            bundle_data.equity_daily_bar_reader,
+            bundle_data.adjustment_reader,
     )
 
     def choose_loader(column):
         if column in USEquityPricing.columns:
             return pipeline_loader
-        raise ValueError(
-            "No PipelineLoader registered for column %s." % column
-        )
+        try:
+            loader = custom_loader.get(column)
+            return loader
+        except KeyError:
+            raise ValueError(
+                    "No PipelineLoader registered for column %s." % column
+            )
 
     if isinstance(metrics_set, six.string_types):
         try:
@@ -180,29 +187,29 @@ def _run(handle_data,
             raise _RunAlgoError(str(e))
 
     perf = TradingAlgorithm(
-        namespace=namespace,
-        data_portal=data,
-        get_pipeline_loader=choose_loader,
-        trading_calendar=trading_calendar,
-        sim_params=SimulationParameters(
-            start_session=start,
-            end_session=end,
+            namespace=namespace,
+            data_portal=data,
+            get_pipeline_loader=choose_loader,
             trading_calendar=trading_calendar,
-            capital_base=capital_base,
-            data_frequency=data_frequency,
-        ),
-        metrics_set=metrics_set,
-        blotter=blotter,
-        benchmark_returns=benchmark_returns,
-        **{
-            'initialize': initialize,
-            'handle_data': handle_data,
-            'before_trading_start': before_trading_start,
-            'analyze': analyze,
-        } if algotext is None else {
-            'algo_filename': getattr(algofile, 'name', '<algorithm>'),
-            'script': algotext,
-        }
+            sim_params=SimulationParameters(
+                    start_session=start,
+                    end_session=end,
+                    trading_calendar=trading_calendar,
+                    capital_base=capital_base,
+                    data_frequency=data_frequency,
+            ),
+            metrics_set=metrics_set,
+            blotter=blotter,
+            benchmark_returns=benchmark_returns,
+            **{
+                'initialize'          : initialize,
+                'handle_data'         : handle_data,
+                'before_trading_start': before_trading_start,
+                'analyze'             : analyze,
+            } if algotext is None else {
+                'algo_filename': getattr(algofile, 'name', '<algorithm>'),
+                'script'       : algotext,
+            }
     ).run()
 
     if output == '-':
@@ -261,8 +268,8 @@ def load_extensions(default, extensions, strict, environ, reload=False):
                 raise
             # without `strict` we should just log the failure
             warnings.warn(
-                'Failed to load extension: %r\n%s' % (ext, e),
-                stacklevel=2
+                    'Failed to load extension: %r\n%s' % (ext, e),
+                    stacklevel=2
             )
         else:
             _loaded_extensions.add(ext)
@@ -285,7 +292,8 @@ def run_algorithm(start,
                   extensions=(),
                   strict_extensions=True,
                   environ=os.environ,
-                  blotter='default'):
+                  blotter='default',
+                  custom_loader=None):
     """
     Run a trading algorithm.
 
@@ -357,25 +365,26 @@ def run_algorithm(start,
     load_extensions(default_extension, extensions, strict_extensions, environ)
 
     return _run(
-        handle_data=handle_data,
-        initialize=initialize,
-        before_trading_start=before_trading_start,
-        analyze=analyze,
-        algofile=None,
-        algotext=None,
-        defines=(),
-        data_frequency=data_frequency,
-        capital_base=capital_base,
-        bundle=bundle,
-        bundle_timestamp=bundle_timestamp,
-        start=start,
-        end=end,
-        output=os.devnull,
-        trading_calendar=trading_calendar,
-        print_algo=False,
-        metrics_set=metrics_set,
-        local_namespace=False,
-        environ=environ,
-        blotter=blotter,
-        benchmark_returns=benchmark_returns,
+            handle_data=handle_data,
+            initialize=initialize,
+            before_trading_start=before_trading_start,
+            analyze=analyze,
+            algofile=None,
+            algotext=None,
+            defines=(),
+            data_frequency=data_frequency,
+            capital_base=capital_base,
+            bundle=bundle,
+            bundle_timestamp=bundle_timestamp,
+            start=start,
+            end=end,
+            output=os.devnull,
+            trading_calendar=trading_calendar,
+            print_algo=False,
+            metrics_set=metrics_set,
+            local_namespace=False,
+            environ=environ,
+            blotter=blotter,
+            benchmark_returns=benchmark_returns,
+            custom_loader=custom_loader
     )

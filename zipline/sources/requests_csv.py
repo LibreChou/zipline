@@ -22,6 +22,7 @@ from zipline.protocol import (
     Event
 )
 from zipline.assets import Equity
+from pathlib import Path
 
 logger = Logger('Requests Source Logger')
 
@@ -31,8 +32,8 @@ def roll_dts_to_midnight(dts, trading_day):
         return dts
 
     return pd.DatetimeIndex(
-        (dts.tz_convert('US/Eastern') - pd.Timedelta(hours=16)).date,
-        tz='UTC',
+            (dts.tz_convert('US/Eastern') - pd.Timedelta(hours=16)).date,
+            tz='UTC',
     ) + trading_day
 
 
@@ -42,10 +43,10 @@ class FetcherEvent(Event):
 
 class FetcherCSVRedirectError(ZiplineError):
     msg = dedent(
-        """\
-        Attempt to fetch_csv from a redirected url. {url}
-        must be changed to {new_url}
-        """
+            """\
+            Attempt to fetch_csv from a redirected url. {url}
+            must be changed to {new_url}
+            """
     )
 
     def __init__(self, *args, **kwargs):
@@ -66,7 +67,6 @@ ALLOWED_REQUESTS_KWARGS = {
     'auth',
     'cert'
 }
-
 
 # The following optional arguments are supported for pandas' read_csv
 # function, and may be passed as kwargs to the datasource below.
@@ -114,7 +114,7 @@ ALLOWED_READ_CSV_KWARGS = {
 }
 
 SHARED_REQUESTS_KWARGS = {
-    'stream': True,
+    'stream'         : True,
     'allow_redirects': False,
 }
 
@@ -173,7 +173,7 @@ class PandasCSV(with_metaclass(ABCMeta, object)):
         invalid_kwargs = set(kwargs) - ALLOWED_READ_CSV_KWARGS
         if invalid_kwargs:
             raise TypeError(
-                "Unexpected keyword arguments: %s" % invalid_kwargs,
+                    "Unexpected keyword arguments: %s" % invalid_kwargs,
             )
 
         self.pandas_kwargs = self.mask_pandas_args(kwargs)
@@ -217,24 +217,24 @@ class PandasCSV(with_metaclass(ABCMeta, object)):
         # Explicitly ignoring this parameter.  See note above.
         if format_str is not None:
             logger.warn(
-                "The 'format_str' parameter to fetch_csv is deprecated. "
-                "Ignoring and defaulting to pandas default date parsing."
+                    "The 'format_str' parameter to fetch_csv is deprecated. "
+                    "Ignoring and defaulting to pandas default date parsing."
             )
             format_str = None
 
         tz_str = str(tz)
         if tz_str == pytz.utc.zone:
             parsed = pd.to_datetime(
-                date_str_series.values,
-                format=format_str,
-                utc=True,
-                errors='coerce',
+                    date_str_series.values,
+                    format=format_str,
+                    utc=True,
+                    errors='coerce',
             )
         else:
             parsed = pd.to_datetime(
-                date_str_series.values,
-                format=format_str,
-                errors='coerce',
+                    date_str_series.values,
+                    format=format_str,
+                    errors='coerce',
             ).tz_localize(tz_str).tz_convert('UTC')
 
         if data_frequency == 'daily':
@@ -275,9 +275,9 @@ class PandasCSV(with_metaclass(ABCMeta, object)):
 
         try:
             return self.finder.lookup_symbol(
-                uppered,
-                as_of_date=None,
-                country_code=self.country_code,
+                    uppered,
+                    as_of_date=None,
+                    country_code=self.country_code,
             )
         except MultipleSymbolsFound:
             # Fill conflicted entries with zeros to mark that they need to be
@@ -289,17 +289,16 @@ class PandasCSV(with_metaclass(ABCMeta, object)):
 
     def load_df(self):
         df = self.fetch_data()
-
         if self.pre_func:
             df = self.pre_func(df)
 
         # Batch-convert the user-specifed date column into timestamps.
         df['dt'] = self.parse_date_str_series(
-            self.date_format,
-            self.timezone,
-            df[self.date_column],
-            self.data_frequency,
-            self.trading_day,
+                self.date_format,
+                self.timezone,
+                df[self.date_column],
+                self.data_frequency,
+                self.trading_day,
         ).values
 
         # ignore rows whose dates we couldn't parse
@@ -316,11 +315,11 @@ class PandasCSV(with_metaclass(ABCMeta, object)):
             try:
                 df.pop('sid')
                 warnings.warn(
-                    "Assignment of the 'sid' column of a DataFrame is "
-                    "not supported by Fetcher. The 'sid' column has been "
-                    "overwritten.",
-                    category=UserWarning,
-                    stacklevel=2,
+                        "Assignment of the 'sid' column of a DataFrame is "
+                        "not supported by Fetcher. The 'sid' column has been "
+                        "overwritten.",
+                        category=UserWarning,
+                        stacklevel=2,
                 )
             except KeyError:
                 # There was no 'sid' column, so no warning is necessary
@@ -332,28 +331,28 @@ class PandasCSV(with_metaclass(ABCMeta, object)):
             # exists are replaced with NaNs.
             unique_symbols = df[self.symbol_column].unique()
             sid_series = pd.Series(
-                data=map(self._lookup_unconflicted_symbol, unique_symbols),
-                index=unique_symbols,
-                name='sid',
+                    data=map(self._lookup_unconflicted_symbol, unique_symbols),
+                    index=unique_symbols,
+                    name='sid',
             )
             df = df.join(sid_series, on=self.symbol_column)
 
             # Fill any zero entries left in our sid column by doing a lookup
             # using both symbol and the row date.
-            conflict_rows = df[df['sid'] == 0]
+            conflict_rows = df[df['sid'] == -1]
             for row_idx, row in conflict_rows.iterrows():
                 try:
                     asset = self.finder.lookup_symbol(
-                        row[self.symbol_column],
-                        # Replacing tzinfo here is necessary because of the
-                        # timezone metadata bug described below.
-                        row['dt'].replace(tzinfo=pytz.utc),
-                        country_code=self.country_code,
+                            row[self.symbol_column],
+                            # Replacing tzinfo here is necessary because of the
+                            # timezone metadata bug described below.
+                            row['dt'].replace(tzinfo=pytz.utc),
+                            country_code=self.country_code,
 
-                        # It's possible that no asset comes back here if our
-                        # lookup date is from before any asset held the
-                        # requested symbol.  Mark such cases as NaN so that
-                        # they get dropped in the next step.
+                            # It's possible that no asset comes back here if our
+                            # lookup date is from before any asset held the
+                            # requested symbol.  Mark such cases as NaN so that
+                            # they get dropped in the next step.
                     ) or numpy.nan
                 except SymbolNotFound:
                     asset = numpy.nan
@@ -364,12 +363,13 @@ class PandasCSV(with_metaclass(ABCMeta, object)):
             # Filter out rows containing symbols that we failed to find.
             length_before_drop = len(df)
             df = df[df['sid'].notnull()]
+
             no_sid_count = length_before_drop - len(df)
             if no_sid_count:
                 logger.warn(
-                    "Dropped {} rows from fetched csv.".format(no_sid_count),
-                    no_sid_count,
-                    extra={'syslog': True},
+                        "Dropped {} rows from fetched csv.".format(no_sid_count),
+                        no_sid_count,
+                        extra={'syslog': True},
                 )
         else:
             df['sid'] = df['symbol']
@@ -385,6 +385,7 @@ class PandasCSV(with_metaclass(ABCMeta, object)):
         # operations above depend on having a unique index for the dataframe,
         # and the 'dt' column can contain multiple dates for the same entry.
         df.drop_duplicates(["sid", "dt"])
+
         df.set_index(['dt'], inplace=True)
         df = df.tz_localize('UTC')
         df.sort_index(inplace=True)
@@ -396,7 +397,6 @@ class PandasCSV(with_metaclass(ABCMeta, object)):
 
         if self.post_func:
             df = self.post_func(df)
-
         return df
 
     def __iter__(self):
@@ -485,7 +485,7 @@ class PandasRequestsCSV(PandasCSV):
         # the superclass.
         # Also returns possible https updated url if sent to http quandl ds
         # If url hasn't changed, will just return the original.
-        self._requests_kwargs, self.url =\
+        self._requests_kwargs, self.url = \
             mask_requests_args(url,
                                params_checker=special_params_checker,
                                **kwargs)
@@ -498,21 +498,21 @@ class PandasRequestsCSV(PandasCSV):
         self.namestring = type(self).__name__
 
         super(PandasRequestsCSV, self).__init__(
-            pre_func,
-            post_func,
-            asset_finder,
-            trading_day,
-            start_date,
-            end_date,
-            date_column,
-            date_format,
-            timezone,
-            symbol,
-            mask,
-            symbol_column,
-            data_frequency,
-            country_code=country_code,
-            **remaining_kwargs
+                pre_func,
+                post_func,
+                asset_finder,
+                trading_day,
+                start_date,
+                end_date,
+                date_column,
+                date_format,
+                timezone,
+                symbol,
+                mask,
+                symbol_column,
+                data_frequency,
+                country_code=country_code,
+                **remaining_kwargs
         )
 
         self.fetch_size = None
@@ -544,17 +544,17 @@ class PandasRequestsCSV(PandasCSV):
             # in validation, this will catch it.
             new_url = response.headers['location']
             raise FetcherCSVRedirectError(
-                url=url,
-                new_url=new_url,
-                extra={
-                    'old_url': url,
-                    'new_url': new_url
-                }
+                    url=url,
+                    new_url=new_url,
+                    extra={
+                        'old_url': url,
+                        'new_url': new_url
+                    }
             )
 
         content_length = 0
         logger.info('{} connection established in {:.1f} seconds'.format(
-            url, response.elapsed.total_seconds()))
+                url, response.elapsed.total_seconds()))
 
         # use the decode_unicode flag to ensure that the output of this is
         # a string, and not bytes.
@@ -571,6 +571,8 @@ class PandasRequestsCSV(PandasCSV):
     def fetch_data(self):
         # create a data frame directly from the full text of
         # the response from the returned file-descriptor.
+        if Path(self.url).exists():
+            return pd.read_csv(self.url)
         data = self.fetch_url(self.url)
         fd = StringIO()
 
